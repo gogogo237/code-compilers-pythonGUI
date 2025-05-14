@@ -201,8 +201,7 @@ class MainApp:
             messagebox.showerror("Error", f"Error scanning extensions: {e}", parent=self.master)
             self._log_status(f"Error scanning extensions: {e}", self.compiler_status_text)
 
-
-    def _compiler_compile_sources(self):
+    def _compiler_compile_sources(self): # UPDATED METHOD
         if not self._check_root_dir_set(): return
         
         output_filename = self.COMPILED_SOURCES_FILENAME
@@ -235,29 +234,38 @@ class MainApp:
 
                     for filename in filenames:
                         _, ext = os.path.splitext(filename)
-                        ext = ext.lower()
-                        if excluded_extensions_set and ext in excluded_extensions_set:
-                            continue
+                        ext = ext.lower() # e.g., '.txt'
                         
                         full_path = os.path.join(dirpath, filename)
                         relative_path_normalized = normalize_path(os.path.join(current_rel_dir_path, filename))
 
-                        self._log_status(f"Processing: {relative_path_normalized}", self.compiler_status_text)
+                        # Check if the extension is in the exclusion list
+                        if excluded_extensions_set and ext in excluded_extensions_set:
+                            self._log_status(f"Path-only (ext excluded): {relative_path_normalized}", self.compiler_status_text)
+                            outfile.write(f"--- PATH-ONLY: {relative_path_normalized} ---\n\n")
+                            files_processed_count += 1
+                            continue # Move to the next file
+
+                        # If not an excluded extension, process content
+                        self._log_status(f"Processing (content): {relative_path_normalized}", self.compiler_status_text)
                         outfile.write(f"--- RELATIVE PATH: {relative_path_normalized} ---\n")
                         try:
                             with open(full_path, 'r', encoding='utf-8', errors='surrogateescape') as infile_content:
                                 outfile.write(infile_content.read())
                             outfile.write("\n\n")
-                            files_processed_count += 1
                         except Exception as e_read:
-                            outfile.write(f"ERROR READING FILE: {e_read}\n\n")
+                            # Write error to output file, including the path for clarity
+                            outfile.write(f"ERROR READING FILE ({relative_path_normalized}): {e_read}\n\n")
                             self._log_status(f"Error reading {relative_path_normalized}: {e_read}", self.compiler_status_text)
+                        
+                        files_processed_count += 1 # Count this file as processed (either content or error message written)
             
-            self._log_status(f"Compilation complete. {files_processed_count} file(s) written to {output_filepath}", self.compiler_status_text)
-            messagebox.showinfo("Success", f"Compiled {files_processed_count} files to:\n{output_filepath}", parent=self.master)
+            self._log_status(f"Compilation complete. {files_processed_count} file entries written to {output_filepath}", self.compiler_status_text)
+            messagebox.showinfo("Success", f"Compilation complete. {files_processed_count} file entries written to:\n{output_filepath}", parent=self.master)
         except Exception as e:
             messagebox.showerror("Error", f"Error during compilation: {e}\nFile: {output_filepath}", parent=self.master)
             self._log_status(f"Error during compilation: {e}", self.compiler_status_text)
+
 
     # --- Logic for Path Exporter ---
     def _path_exporter_export_paths(self):
